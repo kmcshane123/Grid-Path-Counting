@@ -8,32 +8,34 @@ using namespace std;
 /**
   THIS CODE COUNTS NUMBER OF HAMILTONIAN PATHS CONNECTING
   ANY GIVEN STARTING CELL WITH ANY GIVEN ENDING CELL IN A
-  R x C GRID WITH UP/DOWN LEFT/RIGHT EDGES.
+  R x C GRID WITH UP/DOWN LEFT/RIGHT EDGES.  FOR LARGER
+  VALUES OF R, CODE CAN BE USED TO CALCULATE THE RECURSION
+  WHICH CAN BE USED TO SOLVE THE PROBLEM.
 
-  CELLS ARE 0-INDEXED.  TO EXCLUDE A CELL (a,b), ADD
-      grid[b-1][a-1].connections = 2;
+  CELLS ARE 0-INDEXED.  CELL ( a, b ) CAN BE EXCLUDED USING
+      grid.excludeCell( a, b );
 
-  FOR HAMILTONIAN PATHS CONNECTING TOP LEFT WITH BOTTOM LEFT:
-      grid[0][0].connections   = 1;    // STARTING CELL
-      grid[0][C-1].connections = 1;    // ENDING CELL
-    FOR INPUT 4 X   generates http://oeis.org/A181688
-    FOR INPUT 5 X   generates http://oeis.org/A181689
+  FOR HAMILTONIAN PATHS CONNECTING TOP LEFT WITH TOP RIGHT:
+      STARTING CELL ( 0, 0 )
+      ENDING CELL   ( 0, C - 1 )
+    FOR INPUT  X 4   generates http://oeis.org/A181688
+    FOR INPUT  X 5   generates http://oeis.org/A181689
 
   FOR HAMILTONIAN PATHS CONNECTING OPPOSITE CORNERS:
-      grid[0][0].connections     = 1;    // STARTING CELL
-      grid[R-1][C-1].connections = 1;    // ENDING CELL
-    FOR INPUT 4 X   generates http://oeis.org/A014523
-    FOR INPUT 5 X   generates http://oeis.org/A014584
+      STARTING CELL ( 0, 0 )
+      ENDING CELL   ( R - 1, C - 1 )
+    FOR INPUT  X 4   generates http://oeis.org/A014523
+    FOR INPUT  X 5   generates http://oeis.org/A014584
 
   FOR HAMILTONIAN CYCLES:
-      grid[0][0].connections = 1;    // STARTING CELL
-      grid[0][1].connections = 1;    // ENDING CELL
-    FOR INPUT 4 X   generates http://oeis.org/A006864
-    FOR INPUT 5 X   generates http://oeis.org/A006865
-    FOR INPUT 6 X   generates http://oeis.org/A145401
-    FOR INPUT 7 X   generates http://oeis.org/A145416
-    FOR INPUT 8 X   generates http://oeis.org/A145418
-    FOR INPUT 9 X   generates http://oeis.org/A160149
+      STARTING CELL ( 0, 0 )
+      ENDING CELL   ( 0, 1 )
+    FOR INPUT  X 4   generates http://oeis.org/A006864
+    FOR INPUT  X 5   generates http://oeis.org/A006865
+    FOR INPUT  X 6   generates http://oeis.org/A145401
+    FOR INPUT  X 7   generates http://oeis.org/A145416
+    FOR INPUT  X 8   generates http://oeis.org/A145418
+    FOR INPUT  X 9   generates http://oeis.org/A160149
 **/
 
 // ================= BEGIN Biggy ====================
@@ -541,25 +543,28 @@ class  Grid
 };
 
 
+// INPUT FORMAT:
+// TYPICALLY R >= C ... THE GRID IS TALL AND THIN. THIS CODE
+// CALCULATES THE NUMBER OF HAMILTONIAN PATHS BETWEEN 2 CELLS
+// IN A R x C GRID WITH UP/DOWN LEFT/RIGHT EDGES.
+// WITH THE CHOICES OF BEGIN AND END CELLS BELOW, THIS FINDS
+// THE NUMBER OF HAMILTONIAN TOURS ON THE GRID.
+
 int  main()
 {
     ios_base::sync_with_stdio( false );
     cin.tie( NULL );
 
-    constexpr int  MOD = 1000000007;
-
     size_t  R, C;
     cin >> R >> C;
 
     Grid< Biggy >  G( R, C );
-    G.setEndpoints( 0, 0, 0, 1 );
+    G.setEndpoints( 0, 0, 0, 1 );  // COUNTS HAMILTONIAN TOURS
     auto  ans = G.solve();
 
-    cout << "Rows: " << C << "  Cols: " << R << '\n';
+    cout << "Rows: " << R << "  Cols: " << C << '\n';
     cout << "Num Paths:  " << ans << '\n';
-    cout << "Paths mod " << MOD << ":  " << ans %MOD << '\n';
 
     return  0;
 }
 
-// GENERATES  https://oeis.org/A003763   CHECKED UP TO R = 16 C = 16
