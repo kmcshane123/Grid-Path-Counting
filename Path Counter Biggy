@@ -385,7 +385,7 @@ class  Grid
         for( size_t row=0 ; row<R ; ++row )  {
             StateList  nextStates;
 
-            for( auto cur : curStates )  {
+            for( auto &cur : curStates )  {
                 // PLACE CURRENT STATE IN ROW  row
                 grid[row]   = cur.first;
                 T  curCount = cur.second;
