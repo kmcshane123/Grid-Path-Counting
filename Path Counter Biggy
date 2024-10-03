@@ -375,6 +375,8 @@ class  Grid
         grid[r1][c1].connections = 1;   grid[r2][c2].connections = 1;
     }
 
+    void  excludeCell( size_t r, size_t c ) { grid[r][c].connections = 2; }
+
     T  solve()  {
         T  solutions = 0;
 
