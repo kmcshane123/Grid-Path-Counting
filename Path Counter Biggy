@@ -38,365 +38,256 @@ using namespace std;
     FOR INPUT  X 9   generates http://oeis.org/A160149
 **/
 
-// ================= BEGIN Biggy ====================
+class  Biggy  {
+    using  i64 = int64_t;
+    using  u64 = uint64_t;
 
-class Biggy
-{
-  private:
-    vector<int>  N;
-    int          sign;
+  public:
+    inline static constexpr int  base_dig = 6;
+    inline static constexpr u64  base     = 1000000;
+    inline static constexpr u64  basebase = 1LL*base*base;
 
-    static constexpr int  base       = 1000000000;
-    static constexpr int  baseDigits = 9;
-
-    int &operator [] ( int x )              { return( N[x] ); }
-    const int &operator [] ( int x )  const { return( N[x] ); }
-    int size()  const                       { return N.size(); }
-
-    typedef long long    _LL;
-    typedef vector<_LL>  _VLL;
+    int          sgn = 1;
+    vector<u64>  v{};
 
   public:
     // CONSTRUCTORS
-    Biggy()                   { sign = 1; }
-    Biggy( _LL v )            { *this = v; }
+    Biggy(){}
+    Biggy( i64 val )  {
+        u64  x;
+        if( val < 0 ) { sgn = -1;  x = -val; }
+        else  x = val;
+        for( ; x>0 ; x/=base )   v.emplace_back( x %base );
+    }
     Biggy( const string &s )  { read( s ); }
 
+    // INPUT OUTPUT
+    friend ostream &operator << ( ostream &stream, const Biggy &val )  {
+        if( val.sgn == -1 )   stream << '-';
+        stream << ( val.v.size() ? val.v.back() : 0 );
+        for( int i=(int)val.v.size() - 2; i >= 0 ; --i )
+            stream << setw( base_dig ) << setfill( '0' ) << val.v[i];
+        return  stream;
+    }
+    friend istream& operator >> ( istream &stream, Biggy &b )  {
+        string  s;   stream >> s;   b.read( s );
+        return stream;
+    }
+
     // COMPARISON OPERATORS
-    bool operator < ( const Biggy &v ) const
-    {
-        if( sign != v.sign )    return sign < v.sign;
-        if( size() != v.size() )
-            return size()*sign < v.size()*v.sign;
-        for( int i=size() - 1 ; i>=0 ; --i )
-            if( N[i] != v[i] )
-                return N[i]*sign < v[i]*sign;
-        return false;
+    bool  operator < ( const Biggy &b ) const  {
+        if( sgn != b.sgn )   return  sgn < b.sgn;
+        if( size() != b.size() )
+            return  (int)size() * sgn < (int)b.size() * b.sgn;
+        for( int i=(int)size() - 1 ; i>=0 ; --i )
+            if( v[i] != b[i] )
+                return  v[i] * sgn < b[i] * b.sgn;
+        return  false;
     }
-    bool operator >  ( const Biggy &v ) const
-    { return v < *this; }
-    bool operator <= ( const Biggy &v ) const
-    { return !( v < *this ); }
-    bool operator >= ( const Biggy &v ) const
-    { return !( *this < v ); }
-    bool operator == ( const Biggy &v ) const
-    { return !( *this < v ) && !( v < *this ); }
-    bool operator != ( const Biggy &v ) const
-    { return *this < v || v < *this; }
+    bool  operator >  ( const Biggy &b ) const  { return  b < *this; }
+    bool  operator <= ( const Biggy &b ) const  { return  !( b < *this ); }
+    bool  operator >= ( const Biggy &b ) const  { return  !( *this < b ); }
+    bool  operator == ( const Biggy &b ) const  {
+                        return  !( *this < b )  &&  !( b < *this ); }
+    bool  operator != ( const Biggy &b ) const  { return *this < b || b < *this; }
 
-  private:
-    // GETS AND SETS
-    bool isNeg() const  { return sign < 0; }
-    bool isZero() const {
-        return N.empty() || ( size() == 1  &&  !N[0] );
-    }
-    _LL longValue() const {
-        _LL res = 0;
-        for( int i=size()-1 ; i>=0 ; --i )   res = res*base + N[i];
-        return res*sign;
-    }
-    string toString() const  {
-        ostringstream s;
-        if( isNeg() )    s << '-';
-        s << ( N.empty() ? 0 : N.back() );
-        for( int i=size()-2 ; i>=0 ; --i )
-            s << setw( baseDigits ) << setfill( '0' ) << N[i];
-        return s.str();
+    // ARITHMETIC OPERATORS WITH BIGGY
+    Biggy  abs() const  { Biggy res = *this;  res.sgn = 1;  return res; }
+    Biggy  operator - () const { Biggy res=*this; res.sgn=-sgn; return res; }
+    inline Biggy  &operator ++ () { return *this += 1; }
+    inline Biggy  &operator -- () { return *this -= 1; }
+
+    Biggy  operator + ( const Biggy &val ) const  {
+        if( sgn != val.sgn )   return  *this - (-val);
+        u64  carry = 0;  Biggy  res = val;
+        for( size_t i=0 ; i<max( size(), val.size() ) || carry ; ++i )  {
+            if( i == res.size() )   res.v.emplace_back( 0 );
+            res[i] += carry + ( i<size() ? v[i] : 0 );
+            carry = res[i] >= base;
+            if( carry )   res[i] -= base;
+        }
+        return  res.trim();
     }
 
-  public:
-    // ASSIGNMENT OPERATORS
-    void operator = ( const string &s ) { read( s ); }
-    void operator = ( const Biggy &v )  { sign = v.sign;  N = v.N; }
-    void operator = ( _LL v ) {
-        v < 0 ? sign = -1,  v = -v : sign = 1;
-        for( ; v>0 ; v=v/base )    N.push_back( v %base );
+    Biggy  operator - ( const Biggy &b ) const  {
+        if( sgn != b.sgn )      return  *this + ( -b );
+        if( abs() < b.abs() )   return  -( b - *this );
+        Biggy  res = *this;
+        int    carry = 0;
+
+        for( int i=0 ; i<(int)b.size() || carry ; ++i )  {
+            i64  x = res[i];
+            x -= carry + ( i < (int)b.size() ? b[i] : 0 );
+            carry = x < 0;
+            if( carry )   res[i] = base + x;
+            else          res[i] = x;
+        }
+        return  res.trim();
     }
 
-    // ARITHMETIC OPERATORS
-    Biggy operator + ( const Biggy &v ) const {
-        if( sign == v.sign ) {
-            Biggy res = v;
+    Biggy  operator * ( const Biggy &b ) const  {
+        if( !size() || !b.size() )   return Biggy( 0 );
 
-            for( int i=0, carry=0 ; i<max( size(), v.size() ) ||
-                 carry ; ++i )
-            {
-                if( i == res.size() )    res.N.push_back( 0 );
-                res[i] += carry + ( i < size() ? N[i] : 0 );
-                carry = res[i] >= base;
-                if( carry )    res[i] -= base;
+        size_t  n = size(),  m = b.size();
+        vector<u64>  ans( n + m - 1, 0 );
+        if( n < m )
+            for( size_t j=0 ; j<m ; ++j )
+                for( size_t i=0 ; i<n ; ++i )   ans[i+j] += (*this)[i]*b[j];
+        else
+            for( size_t i=0 ; i<n ; ++i )
+                for( size_t j=0 ; j<m ; ++j )   ans[i+j] += (*this)[i]*b[j];
+
+        Biggy  A;
+        A.v.assign( ans.size(), 0 );
+        u64  carry = 0;
+        for( size_t i=0 ; i<ans.size() ; ++i  )  {
+            u64  cur = ans[i] + carry;
+            if( cur >= base )  {
+                A[i]  = cur % base;
+                carry = cur/base;
             }
-            return res;
-        }
-        return  *this - ( -v );
-    }
-
-    Biggy operator - ( const Biggy &v ) const  {
-        if( sign == v.sign )
-        {
-            if( abs() >= v.abs() )
-            {
-                Biggy res = *this;
-                for( int i=0, carry=0 ; i<v.size() || carry ; ++i )
-                {
-                    res[i] -= carry + (i < v.size() ? v[i] : 0);
-                    carry = res[i] < 0;
-                    if( carry )    res[i] += base;
-                }
-                res.trim();
-                return res;
-            }
-            return -( v - *this );
-        }
-        return *this + ( -v );
-    }
-
-    Biggy operator - () const {
-        Biggy res = *this;
-        res.sign = -sign;
-        return res;
-    }
-    Biggy operator * ( int v ) const  {
-        Biggy res = *this;
-        res *= v;
-        return res;
-    }
-    Biggy operator * ( _LL v ) const  {
-        Biggy res = v;
-        res *= (*this);
-        return res;
-    }
-
-    Biggy operator * ( const Biggy &v ) const  {
-        vector<int> a6 = convertBase( N, baseDigits, 6 );
-        vector<int> b6 = convertBase( v.N, baseDigits, 6 );
-        _VLL A( a6.begin(), a6.end() );
-        _VLL B( b6.begin(), b6.end() );
-        while( A.size() < B.size() )    A.push_back( 0 );
-        while( B.size() < A.size() )    B.push_back( 0 );
-        while( A.size() & ( A.size() - 1 ) )
-            A.push_back( 0 ), B.push_back( 0 );
-        _VLL C = karatsubaMultiply( A, B );
-        Biggy res;
-        res.sign = sign*v.sign;
-        for( size_t i=0, carry=0 ; i<C.size() ; ++i ) {
-            _LL cur = C[i] + carry;
-            res.N.push_back( int( cur %1000000 ) );
-            carry = int( cur/1000000 );
-        }
-        res.N = convertBase( res.N, 6, baseDigits );
-        res.trim();
-        return res;
-    }
-
-    Biggy operator / ( const Biggy &v ) const {
-        return divMod( *this, v ).first;
-    }
-    Biggy operator % ( const Biggy &v ) const {
-        return divMod( *this, v ).second;
-    }
-    Biggy operator / ( int v ) const  {
-        Biggy res = *this;
-        res /= v;
-        return res;
-    }
-    Biggy operator / ( _LL v ) const  {
-        Biggy res = v;
-        res = (*this)/v;
-        return res;
-    }
-    Biggy operator % ( int v ) const  {
-        if( v < 0 )    v = -v;
-        int m = 0;
-        for( int i=size() - 1 ; i>=0 ; --i )
-            m = ( N[i] + m*(_LL)base ) %v;
-        return m*sign;
-    }
-    _LL operator % ( _LL v ) const  {
-        Biggy res = v;
-        res = (*this) %res;
-        return res.longValue();
-    }
-    static pair<Biggy, Biggy> divMod( const Biggy &A1,
-           const Biggy &B1 ) {
-        int norm = base/( B1.N.back() + 1 );
-        Biggy A = A1.abs()*norm;
-        Biggy B = B1.abs()*norm;
-        Biggy Q, R;
-        Q.N.resize( A.size() );
-
-        for( int i=A.size() - 1 ; i>=0 ; --i )
-        {
-            R = R*base + A[i];
-            int s1 = R.size() <= B.size() ? 0 : R[B.size()];
-            int s2 = R.size() <= B.size() - 1 ? 0 : R[B.size() - 1];
-            int d = ( (_LL)base*s1 + s2 )/B.N.back();
-            R -= B*d;
-            while( R < 0 )   { R += B;  --d; }
-            Q[i] = d;
-        }
-        Q.sign = A1.sign*B1.sign;
-        R.sign = A1.sign;
-        Q.trim();    R.trim();
-        return make_pair( Q, R/norm );
-    }
-
-    // UNARY OPERATORS
-    Biggy& operator ++ ()   { (*this) = (*this) + 1; return *this; }
-    Biggy operator ++ (int) { Biggy t(*this); ++(*this); return t; }
-    Biggy& operator -- ()   { (*this) = (*this) - 1; return *this; }
-    Biggy operator -- (int) { Biggy t(*this); --(*this); return t; }
-
-    void operator += ( const Biggy &v )  { *this = *this + v; }
-    void operator -= ( const Biggy &v )  { *this = *this - v; }
-    void operator *= ( const Biggy &v )  { *this = (*this)*v; }
-    void operator /= ( const Biggy &v )  { *this = (*this)/v; }
-    void operator %= ( const Biggy &v )  { *this = (*this)%v; }
-    void operator += ( const _LL v )     { *this = *this + v; }
-    void operator -= ( const _LL v )     { *this = *this - v; }
-    void operator *= ( const _LL v )     { *this = (*this)*v; }
-    void operator /= ( const _LL v )     { *this = (*this)/v; }
-    void operator %= ( const _LL v )     { *this = (*this)%v; }
-
-    void operator *= ( int v ) {
-        if( v < 0 )    sign = -sign, v = -v;
-        for( int i=0, carry=0 ; i<size() || carry ; ++i )
-        {
-            if( i == size() )    N.push_back( 0 );
-            _LL cur = N[i]*(_LL)v + carry;
-            carry   = (int) (cur/base);
-            N[i]    = (int) (cur %base);
-        }
-        trim();
-    }
-    void operator /= ( int v ) {
-        if( v < 0 )    sign = -sign, v = -v;
-        for( size_t i=size() - 1, rem = 0 ; i>=0 ; --i )
-        {
-            _LL cur = N[i] + rem*(_LL)base;
-            N[i]    = (int) ( cur/v );
-            rem     = (int) ( cur %v );
-        }
-        trim();
-    }
-    Biggy abs() const {
-        Biggy res = *this;
-        res.sign *= res.sign;
-        return res;
-    }
-
-  private:
-    // PRIVATE UTILITIES
-    void trim()  {
-        while( !N.empty()  &&  !N.back() )    N.pop_back();
-        if( N.empty() )    sign = 1;
-    }
-
-    void read( const string &s )  {
-        sign = 1;
-        N.clear();
-        size_t  pos = 0;
-        while( pos<s.size() && ( s[pos] == '-' || s[pos] == '+' ) )
-            if( s[pos++] == '-' )    sign = -sign;
-        for( size_t i=s.size() - 1 ; i>=pos ; i-=baseDigits )
-        {
-            int x = 0;
-            for( size_t j=max( pos, i - baseDigits + 1 ) ; j<=i ; ++j )
-                x = x*10 + s[j] - '0';
-            N.push_back( x );
-        }
-        trim();
-    }
-
-    static vector<int> convertBase( const vector<int> &a,
-           int oldDigits, int newDigits )
-    {
-        vector<_LL> p( max( oldDigits, newDigits ) + 1 );
-        p[0] = 1;
-        for( size_t i=1 ; i<p.size() ; ++i )  p[i] = p[i - 1]*10;
-        vector<int> res;
-        _LL cur = 0;
-        int curDigits = 0;
-        for( size_t i=0 ; i<a.size() ; ++i )
-        {
-            cur += a[i]*p[curDigits];
-            curDigits += oldDigits;
-            while( curDigits >= newDigits )
-            {
-                res.push_back( int( cur %p[newDigits] ) );
-                cur /= p[newDigits];
-                curDigits -= newDigits;
+            else {
+                A[i]  = cur;
+                carry = 0;
             }
         }
-        res.push_back( (int) cur );
-        while( !res.empty()  &&  !res.back() )
-            res.pop_back();
-        return res;
+        if( carry )  A.v.push_back( carry );
+
+        A.sgn = ( sgn == b.sgn ) ? 1 : -1;
+        return  A.trim();
     }
 
-  public:
-    // FRIENDS
-    friend Biggy gcd( const Biggy &a, const Biggy &b ) {
+    Biggy  &operator /= ( const Biggy& x )  {
+        Biggy  a = abs(),  b = x.abs();
+        sgn = ( sgn != x.sgn ) ? -1 : 1;
+        if( a < b )             return  *this = Biggy();
+        if( b == Biggy( 1 ) )   return  *this = a;
+        Biggy   inv( basebase / b.v.back() );
+        Biggy   pre = Biggy( 0 ),  res( 0 );
+        size_t  d   = 1 + a.size() - b.size();
+        size_t  cur = 2,  bcur = 1;
+
+        while( inv != pre  ||  bcur < b.size() )  {
+            bcur  = min( bcur << 1, b.size() );
+            res.v = { b.v.end() - bcur, b.v.end() };
+            pre   = inv;
+            inv  *= ( ( Biggy( 2 ) << ( cur + bcur - 1  ) ) - inv*res );
+            cur   = min( cur << 1, d );
+            inv.v = { inv.v.end() - cur, inv.v.end() };
+        }
+
+        inv.v = { inv.v.end() - d, inv.v.end() };
+        res   = a * inv;
+        res >>= ( a.size() );
+        Biggy  mul = res * b;
+        while( mul + b <= a )  { res += Biggy( 1 );  mul += b; }
+        v = res.v;
+        return  *this;
+    }
+
+    Biggy  operator % ( const Biggy &x ) const { return  (*this) - x*( (*this)/x ); }
+
+    pair<Biggy, Biggy>  divMod( const Biggy &y )  {
+        Biggy  Q = (*this) / y;
+        return  make_pair( Q, (*this) - Q*y );
+    }
+
+    static Biggy  gcd( const Biggy &a, const Biggy &b ) {
         return b.isZero() ? a : gcd( b, a %b );
     }
-    friend Biggy lcm( const Biggy &a, const Biggy &b ) {
+    static Biggy  lcm( const Biggy &a, const Biggy &b ) {
         return a/gcd( a, b )*b;
     }
-    friend istream& operator >> ( istream &stream, Biggy &v ) {
-        string s;   stream >> s;   v.read( s );
-        return stream;
+
+    Biggy  &operator += ( const Biggy &b )  { *this = *this + b;  return *this; }
+    Biggy  &operator -= ( const Biggy &b )  { *this = *this - b;  return *this; }
+    Biggy  &operator *= ( const Biggy &b )  { *this = *this * b;  return *this; }
+    Biggy  &operator %= ( const Biggy &b )  { *this = (*this)%b;  return *this; }
+    Biggy   operator  / ( const Biggy& x ) const { Biggy b(*this);  return b /= x; }
+
+   // ARITMETIC OPERATORS WITH INTS
+   Biggy  &operator *= ( int64_t val )  {
+        if( val < 0 )   sgn = -sgn,  val = -val;
+        u64  m = val,  carry = 0;
+        for( size_t i=0 ; i<v.size()  ||  carry ; ++i )  {
+            if( i == v.size() )  v.emplace_back( 0 );
+            u64  cur = v[i]*m + carry;
+            carry = cur/base;
+            v[i]  = cur %base;
+        }
+        return  (*this).trim();
     }
-    friend ostream& operator << ( ostream &stream, Biggy const &v ) {
-        string s = v.toString();
-        stream << s;
-        return stream;
+
+    Biggy  &operator /= ( int64_t b )  {
+        if( b < 0 )   sgn = -sgn,  b = -b;
+        u64  d = b;
+        for( int i=size() - 1, rem = 0 ; i>=0 ; --i )  {
+            u64  cur = v[i] + rem * base;
+            v[i] = cur / d;
+            rem  = cur % d;
+        }
+        return  (*this).trim();
     }
+
+    i64  operator % ( i64 val ) const  {
+        i64  m = 0;
+        for( int i=size()-1 ; i>=0 ; --i )   m = ( v[i] + m*base ) %val;
+        return  m;
+    }
+
+    Biggy  operator / ( i64 val )  { Biggy  res = *this;  return  res /= val; }
+    Biggy  operator * ( i64 val )  { Biggy  res = *this;  return  res *= val; }
 
   private:
-    // USE KARATSUBA MULTIPLY INTERNALLY
-    static _VLL karatsubaMultiply( const _VLL &A, const _VLL &B )
-    {
-        int n = A.size();
-        _VLL res( n + n );
-        if( n <= 32 )
-        {
-            for( int i=0 ; i<n ; ++i )
-                for( int j=0 ; j<n ; ++j )
-                    res[i + j] += A[i]*B[j];
-            return res;
+    u64  &operator [] ( int x )              { return( v[x] ); }
+    const u64  &operator [] ( int x )  const { return( v[x] ); }
+    bool  isZero() const { return  v.empty() || ( size() == 1  &&  !v[0] ); }
+    size_t  size() const { return v.size(); }
+    Biggy&  trim()  {
+        while( !v.empty() && !v.back() )   v.pop_back();
+        if( v.empty() )  sgn = 1;
+        return  *this;
+    }
+
+    Biggy  &operator <<= ( const int& x )  {
+        if( !isZero() )  {
+            vector<u64>  add( x, 0 );
+            v.insert( v.begin(), add.begin(), add.end() );
         }
+        return *this;
+    }
+    Biggy  &operator >>= ( const int& x )  {
+        v = vector<u64>( v.begin() + min( x, (int)v.size() ), v.end() );
+        return  *this;
+    }
+    Biggy  operator << ( const int& x )  const{ return  Biggy( *this ) <<= x; }
+    Biggy  operator >> ( const int& x )  const{ return  Biggy( *this ) >>= x; }
 
-        int k = n >> 1;
-        _VLL a1( A.begin(), A.begin() + k );
-        _VLL a2( A.begin() + k, A.end() );
-        _VLL b1( B.begin(), B.begin() + k );
-        _VLL b2( B.begin() + k, B.end() );
-
-        _VLL a1b1 = karatsubaMultiply( a1, b1 );
-        _VLL a2b2 = karatsubaMultiply( a2, b2 );
-
-        for( int i=0 ; i<k ; ++i )  { a2[i] += a1[i]; b2[i] += b1[i]; }
-
-        _VLL r = karatsubaMultiply( a2, b2 );
-
-        for( size_t i=0 ; i<a1b1.size() ; ++i )  r[i]       -= a1b1[i];
-        for( size_t i=0 ; i<a2b2.size() ; ++i )  r[i]       -= a2b2[i];
-        for( size_t i=0 ; i<r.size() ; ++i)      res[i + k] += r[i];
-        for( size_t i=0 ; i<a1b1.size() ; ++i )  res[i]     += a1b1[i];
-        for( size_t i=0 ; i<a2b2.size() ; ++i )  res[i + n] += a2b2[i];
-
-        return res;
+    void  read( const string &s )  {
+        v.clear();
+        int  pos = 0;
+        sgn = 1;
+        while( pos < (int)s.size()  &&  ( s[pos] == '-' || s[pos] == '+' ) )  {
+            if( s[pos] == '-' )   sgn = -sgn;
+            ++pos;
+        }
+        for( int i=(int)s.size()-1 ; i>=pos ; i-=base_dig )  {
+            u64  x = 0;
+            for( int j=max( pos, i - base_dig + 1 ) ; j<=i ; ++j )
+                x = x*10 + s[j] - '0';
+            v.emplace_back( x );
+        }
+        trim();
+    }
+    string  toString() const  {
+        ostringstream  s;
+        if( sgn == -1 )    s << '-';
+        s << ( v.empty() ? 0 : v.back() );
+        for( int i=(int)size()-2 ; i>=0 ; --i )
+            s << setw( base_dig ) << setfill( '0' ) << v[i];
+        return  s.str();
     }
 };
-
-template <typename T>     // ALLOWS LEFT MULT BY DIFFERENT INT TYPES
-Biggy operator * ( T myInt, Biggy const& x )  { return x*myInt; }
-template <typename T>     // ALLOWS LEFT ADD BY DIFFERENT INT TYPES
-Biggy operator + ( T myInt, Biggy const& x )  { return x + myInt; }
-template <typename T>     // ALLOWS LEFT SUBT BY DIFFERENT INT TYPES
-Biggy operator - ( T myInt, Biggy& x )        { return -x + myInt; }
-
-// ================== END Biggy ====================
 
 class Cell
 {
@@ -568,3 +459,4 @@ int  main()
     return  0;
 }
 
+// TESTED ON  https://oeis.org/A003763  INPUT 14 14
