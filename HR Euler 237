@@ -1,0 +1,370 @@
+//       HACKERRANK EULER+ 237 - Tours on a 4xn Playing Board
+//              WRITTEN BY:  Kevin McShane
+
+/**
+  THE RECURSION FOR THE NUMBER OF TOURS ON A  4 x N  BOARD IS:
+
+          T(n) = a T(n-1) + b T(n-2) + c T(n-3) + d T(n-4),
+  WHERE
+             T(1) = 1,  T(2) = 1,  T(3) = 4,  T(4) = 8
+  AND
+                  a = 2,  b = 2,  c = -2,  d = 1.
+
+  DEFINE
+                   S(n) = sum { T(n) | i=1...n }.
+  THEN
+             S(1) = 1,  S(2) = 2,  S(3) = 6,  S(4) = 14.
+
+  FOR n > 4 WE HAVE
+
+             ( 1 1 0 0 0 )   ( S(n-2) )     ( S(n-1) )
+             ( 0 a b c d )   ( T(n-1) )     ( T(n)   )
+             ( 0 1 0 0 0 ) * ( T(n-2) )  =  ( T(n-1) )
+             ( 0 0 1 0 0 )   ( T(n-3) )     ( T(n-2) )
+             ( 0 0 0 1 0 )   ( T(n-4) )     ( T(n-3) ).
+
+  THEREFORE FOR n > 4,
+                          (n-4)
+             ( 1 1 0 0 0 )^    ( S(3) )     ( S(n-1) )
+             ( 0 a b c d )     ( T(4) )     ( T(n)   )
+             ( 0 1 0 0 0 )   * ( T(3) )  =  ( T(n-1) )
+             ( 0 0 1 0 0 )     ( T(2) )     ( T(n-2) )
+             ( 0 0 0 1 0 )     ( T(1) )     ( T(n-3) ).
+
+  WRITE THIS EQUATION AS  M^(n-4)*rhs = b.  TO FIND THE SUM
+  FROM i=1 TO n OF T(i),  EVALUATE A = M^(n-3).  THE ANSWER
+  IS THE FIRST COMPONENT OF A*rhs.  THIS EXTENDS EASILY FOR
+  RECURSIONS OF GREATER LENGTH.
+
+  THE RECURSIONS AND INITIAL VALUES FOR m = 4 AND 5 CAN BE
+  FOUND ON OEIS:
+    FOR  m = 4:   http://oeis.org/A181688
+    FOR  m = 5:   http://oeis.org/A181689
+
+  THE REQUIRED INTIAL VALUES AND RECURSIONS CAN BE CALCULATED
+  OFFLINE USING A SEPARATE CODE  gridRecursionCoeffs.cpp
+
+  INTERESTING FACT:
+  EMPIRICALLY, THE RECURSION FOR  m = k  IS THE SAME AS THE
+  RECURSION FOR THE NUMBER OF HAMILTONIAN CYCLES IN A  k x N
+  GRID (AT LEAST IT WORKS FOR k = 4 THRU 9), BUT THE INITIAL
+  VALUES ARE DIFFERENT.  IT IS EASY TO CHECK IF THE RECURSION
+  INDEED WORKS BY COMPARING LARGER VALUES OF T(n) CALCULATED
+  VIA THE OFFLINE CODE AND THE RECURSION.
+
+  THE RECURSIONS FOR HAMILTONIAN CYCLES CAN BE FOUND ON OEIS:
+    FOR  m = 4:   http://oeis.org/A006864   ORDER 4
+    FOR  m = 5:   http://oeis.org/A006865   ORDER 6
+    FOR  m = 6:   http://oeis.org/A145401   ORDER 14
+    FOR  m = 7:   http://oeis.org/A145416   ORDER 36
+    FOR  m = 8:   http://oeis.org/A145418   ORDER 66
+    FOR  m = 9:   http://oeis.org/A160149   ORDER 208
+    FOR  m = 10:  http://oeis.org/A180504   ORDER 346
+**/
+
+#include <iostream>
+#include <vector>
+#include <cassert>
+using namespace std;
+
+using  i64 = int64_t;
+constexpr int  MOD = 1e9 + 7;
+
+template <int MOD>
+class  Mint
+{
+  private:
+    int  x;
+
+  public:
+    Mint() : x( 0 ) {}
+    Mint( i64 y ) : x( y >= 0 ? ( y < MOD ? y : y% MOD ) : y %MOD + MOD ) {}
+
+    explicit operator int () const  { return x; }
+
+    Mint &operator += ( const Mint &p )  { if( ( x += p.x ) >= MOD )  x -= MOD;  return *this; }
+    Mint &operator -= ( const Mint &p )  { if( ( x += MOD - p.x ) >= MOD )  x -= MOD;  return *this; }
+    Mint &operator *= ( const Mint &p )  { x = (int)( 1LL*x*p.x %MOD );  return *this; }
+    Mint &operator /= ( const Mint &p )  { *this *= p.inverse();  return *this; }
+    Mint &operator ++ ()  { return *this += Mint( 1 ); }
+    Mint operator  ++ ( int )  { Mint  tmp = *this;  ++*this;  return tmp; }
+    Mint &operator -- ()  { return *this -= Mint( 1 ); }
+    Mint operator  -- ( int )  { Mint  tmp = *this;  --*this;  return tmp; }
+    Mint operator  -  () const  { return Mint( -x ); }
+    Mint operator  +  ( const Mint &p )  const { return Mint(*this) += p; }
+    Mint operator  -  ( const Mint &p )  const { return Mint(*this) -= p; }
+    Mint operator  *  ( const Mint &p )  const { return Mint(*this) *= p; }
+    Mint operator  /  ( const Mint &p )  const { return Mint(*this) /= p; }
+    bool operator  == ( const Mint &p )  const { return x == p.x; }
+    bool operator  != ( const Mint &p )  const { return x != p.x; }
+
+    Mint  pow( i64 k ) const  {
+        Mint  now = *this,  ret = 1;
+        for( ; k>0 ; k>>=1, now*=now )
+            if( k & 1 )  ret *= now;
+        return  ret;
+    }
+
+    Mint  inverse() const { assert( *this != Mint( 0 ) );  return pow( MOD - 2 ); }
+
+    friend ostream &operator << ( ostream &os, const Mint &p )  { return os << p.x; }
+    friend istream &operator >> ( istream &is, Mint &p )  {
+        i64  a;  is >> a;  p = Mint<MOD> ( a );  return  is; }
+};
+
+using  mint  = Mint<MOD>;
+using  Vmint = vector<mint>;
+
+template <typename T>
+class Matrix
+{
+  private:
+    int                hgt, wth;
+    vector<vector<T>>  A;
+
+  public:
+    Matrix( int n ) : hgt( n ), wth( n ), A( n, vector<T>( n, 0 ) ) {}
+    Matrix( int m, int n ) : hgt( m ), wth( n ), A( m, vector<T>( n, 0 ) ) {}
+
+    int  height() const  { return  hgt; }
+    int  width()  const  { return  wth; }
+
+    inline const vector<T>  &operator [] ( int k ) const { return A[k]; }
+    inline vector<T>        &operator [] ( int k ) { return A[k]; }
+
+    Matrix& operator += ( const  Matrix& B )  {
+        size_t  n = height(), m = width();
+        assert( hgt == B.height()  &&  wth == B.width() );
+        for( size_t i=0 ; i<hgt ; ++i )
+            for( size_t j=0 ; j<wth ; ++j )  (*this)[i][j] += B[i][j];
+        return  *this;
+    }
+    Matrix& operator -= ( const  Matrix& B )  {
+        size_t  n = height(), m = width();
+        assert( hgt == B.height()  &&  wth == B.width() );
+        for( size_t i=0 ; i<hgt ; ++i )
+            for( size_t j=0 ; j<wth ; ++j )  (*this)[i][j] -= B[i][j];
+        return  *this;
+    }
+    Matrix& operator *= ( const Matrix& B )  {
+        assert( wth == B.height() );
+        int  p = B.width();
+        Matrix  ret( hgt, p );
+        for( int i=0 ; i<hgt ; ++i )
+            for( int k=0 ; k<wth ; ++k )
+                for( int j=0 ; j<p ; ++j )  ret[i][j] += A[i][k] * B[k][j];
+        swap( A, ret.A );
+        return  *this;
+    }
+    Matrix& operator *= ( const T& v )  {
+        for( int i=0 ; i<hgt ; ++i )
+            for( int j=0 ; j<wth ; ++j )  A[i][j] *= v;
+        return  *this;
+    }
+    Matrix  operator ^= ( i64 k )  {
+       assert( hgt = wth );
+       Matrix  work = I( hgt );
+       for( ; k>0 ; k>>=1, (*this) *= (*this) )
+           if( k & 1 )  work *= (*this);
+       return  (*this) = work;
+    }
+    Matrix& operator /= ( const T& v )  { return  (*this) *= T( 1 ) / v; }
+
+    Matrix operator + ( const Matrix& B )  const  { return  Matrix( *this ) += B; }
+    Matrix operator - ( const Matrix& B )  const  { return  Matrix( *this ) -= B; }
+    Matrix operator * ( const Matrix& B )  const  { return  Matrix( *this ) *= B; }
+    Matrix operator * ( const T& v )       const  { return  Matrix( *this ) *= v; }
+    Matrix operator / ( const T& v )       const  { return  Matrix( *this ) /= v; }
+    Matrix operator ^ ( i64 k )            const  { return  Matrix( *this ) ^= k; }
+
+    friend vector<T> operator * ( const Matrix&  A, const vector<T>&  v )  {
+      size_t  n = A.height(),  m = A.width();
+      assert( m == v.size() );
+      vector<T>  ret( n, T( 0 ) );
+      for( size_t i=0 ; i<n ; ++i )
+        for( size_t j=0 ; j<m ; ++j )    ret[i] += A[i][j] * v[j];
+      return  ret;
+    }
+
+    static Matrix  I( size_t n )  {
+        Matrix  ret( n );
+        for( size_t i=0 ; i<n ; ++i )  ret[i][i] = 1;
+        return  ret;
+    }
+};
+
+Matrix<mint>  makeM( const Vmint& coef, size_t k )  {
+    Matrix<mint>  M( k, k );
+    M[0][0] = 1;    M[0][1] = 1;
+    for( size_t i=1 ; i<k ; ++i )    M[1][i]   = coef[i-1];
+    for( size_t i=2 ; i<k ; ++i )    M[i][i-1] = 1;
+    return  M;
+}
+
+mint  solve( const Vmint& coef, const Vmint& T, size_t n )  {
+    size_t  len = coef.size();
+    Vmint  S( ++len, 0 );
+    for( size_t i=1 ; i<len ; ++i )    S[i] = S[i-1] + T[i-1];
+    if( n < len )    return  S[n];
+
+    Matrix<mint>  M = makeM( coef, len );
+    M ^= ( n - len + 2 );
+
+    Vmint  rhs;
+    rhs.push_back( S[len-2] );
+    for( int i=len-2 ; i>=0 ; --i )   rhs.push_back( T[i] );
+
+    Vmint  ans = M * rhs;     // ans[0] = S(n),   ans[2] = T(n)
+    return  ans[0];
+}
+
+
+int main()  {
+    ios_base::sync_with_stdio( false );
+    cin.tie( NULL );
+
+    i64  m, n;
+    cin >> m >> n;
+
+    Vmint  T, coef;
+
+    switch( m )
+    {
+      case 4:
+      //====      T IS  { T(1), T(2), T(3), T(4) }
+        T    = { 1, 1, 4, 8 };
+        coef = { 2, 2, MOD-2, 1 };
+        break;
+
+      case 5:
+      //====      T  IS  { T(1), T(2), ..., T(6) }
+        T    = { 1, 0, 8, 0, 86, 0 };
+        coef = { 0, 11, 0, 0, 0, 2 };
+        break;
+
+      case 6:
+      //====    T  IS  { T(1), T(2), ..., T(14) }  ( modulo 1e9+7 )
+        T    = { 1, 1, 16, 47, 397, 1770, 11658, 59946, 359962,
+                 1958968, 11341696, 63142224, 360314940, 24278158 };
+        coef = { 5, 14, MOD-63, 12, 90, MOD-35, MOD-66, 118, MOD-8,
+                 MOD-82, 42, 28, MOD-4, 2 };
+        break;
+
+      case 7:
+      //====    T  IS  { T(1), T(2), ..., T(36) }  ( modulo 1e9+7 )
+        T    = { 1, 0, 32, 0, 1584, 0, 88418, 0, 4999752, 0,
+                 283163450, 0, 39767156, 0, 585442810, 0, 614548247,
+                 0, 111511460, 0, 433089405, 0, 219314907, 0,
+                 96936356, 0, 189735033, 0, 841274708, 0, 440616211,
+                 0, 735480357, 0, 937543459, 0 };
+        coef = { 0, 85, 0, MOD-1932, 0, 20403, 0, MOD-116734, 0,
+                 386724, 0, MOD-815141, 0, 1251439, 0, MOD-1690670,
+                 0, 2681994, 0, MOD-4008954, 0, 3390877, 0,
+                 MOD-1036420, 0, MOD-178842, 0, 92790, 0, 17732, 0,
+                 MOD-5972, 0, 1728, 0, 144 };
+        break;
+
+      case 8:
+      //====    T  IS  { T(1), T(2), ..., T(66) }  ( modulo 1e9+7 )
+        T    = { 1, 1, 64, 264, 6820, 52387, 909009, 8934966,
+                 130373192, 440623253, 338414278, 336036738,
+                 455226419, 270722972, 759778790, 297057294,
+                 387572526, 426000808, 749354119, 273433409,
+                 893370661, 328303040, 430426409, 820580350,
+                 907534659, 945650165, 247506355, 918545818,
+                 545737846, 759839141, 439613065, 109283025,
+                 36715961, 757358635, 652327820, 521312950,
+                 961829079, 589606000, 57653405, 742729301,
+                 681754704, 583108677, 111358431, 835255998,
+                 975441358, 791383961, 963883745, 305401002,
+                 659085021, 955375267, 904629834, 786368249,
+                 484579397, 762672180, 476959098, 111676592,
+                 986332619, 287885403, 101458396, 475854936,
+                 97584950, 315704331, 18878306, 827521544,
+                 310533496, 892563646 };
+        coef = { 16, 59, 999998183, 3898, 55218, 999756725,
+                 999454091, 4861689, 997423509, 956511939, 94333210,
+                 141446298, 247568575, 377840445, 789611460,
+                 343451837, 741645654, 170944172, 512822521,
+                 973674285, 980240525, 208619427, 123799647,
+                 502785063, 246696058, 755620471, 786177898,
+                 428912022, 877857070, 649170957, 889204291,
+                 689760168, 482359037, 385385705, 495494719,
+                 732691977, 136302203, 92063731, 76213991,
+                 399844479, 294619608, 536100591, 331661292,
+                 330617444, 1423429, 722204507, 353497910,
+                 188567436, 856347533, 619205968, 972264193,
+                 132682964, 79877148, 41238077, 983591697,
+                 957132982, 981870309, 4261277, 4951334,
+                 985598, 999896839, 999986378, 34282, 6952,
+                 999999475, 36 };
+        break;
+
+      case 9:  // NOT USED
+      //====    T  IS  { T(1), T(2), ..., T(208) } ( modulo 1e9+7 )
+        T    = { 1, 0, 128, 0, 28002, 0, 7503654, 0, 87813820, 0,
+               874865141, 0, 992896371, 0, 614824819, 0, 67068611,
+               0, 657597510, 0, 626169865, 0, 420960936, 0,
+               846857256, 0, 178799503, 0, 650651080, 0, 552854869,
+               0, 107834316, 0, 809182629, 0, 577604630, 0,
+               124438221, 0, 490326050, 0, 177129102, 0, 318071176,
+               0, 954550162, 0, 985360587, 0, 4147487, 0,
+               442894104, 0, 434551805, 0, 367864048, 0, 703543425,
+               0, 935078211, 0, 686139490, 0, 483196424, 0,
+               974178867, 0, 38456883, 0, 432756106, 0, 602016227,
+               0, 266316329, 0, 679334303, 0, 396243272, 0,
+               270675750, 0, 851983473, 0, 964225835, 0, 103664614,
+               0, 319062319, 0, 923872861, 0, 501288477, 0,
+               901942405, 0, 232270837, 0, 369742168, 0, 849244822,
+               0, 719199535, 0, 741379986, 0, 379297493, 0,
+               294974083, 0, 959133911, 0, 765737415, 0, 715199410,
+               0, 968428175, 0, 649677355, 0, 441104582, 0,
+               616542717, 0, 199535064, 0, 543981288, 0, 144668290,
+               0, 663855896, 0, 751112369, 0, 376442575, 0,
+               809634741, 0, 423679750, 0, 543846678, 0, 199091789,
+               0, 830914539, 0, 127831286, 0, 167500934, 0,
+               737246446, 0, 75591628, 0, 668180022, 0, 979287045,
+               0, 430806371, 0, 957896650, 0, 86538793, 0,
+               358288959, 0, 982435451, 0, 914548505, 0, 428200713,
+               0, 433977875, 0, 567105865, 0, 854793591, 0,
+               387779183, 0, 669164013, 0, 125071581, 0, 210072001,
+               0, 93796222, 0, 189994498, 0, 558970430, 0,
+               550737110, 0, 481184185, 0, 771773587, 0, 689492789,
+               0, 673018108, 0, 773823005, 0, 134717387, 0,
+               412322420, 0 };
+        coef = { 0, 672, 0, 999821066, 0, 26786039, 0, 392551421,
+               0, 22505094, 0, 153369616, 0, 297477685, 0,
+               648413076, 0, 596012898, 0, 661848591, 0, 276954081,
+               0, 279398711, 0, 999917135, 0, 400461408, 0,
+               719870129, 0, 522329572, 0, 837524338, 0, 212200172,
+               0, 431765815, 0, 88501749, 0, 863524499, 0,
+               218003465, 0, 346870040, 0, 500255328, 0, 554769979,
+               0, 221920025, 0, 648991332, 0, 932627872, 0,
+               812766598, 0, 605643062, 0, 901610059, 0, 18386053,
+               0, 987258629, 0, 497762637, 0, 790513061, 0,
+               131016075, 0, 463991100, 0, 305353128, 0, 700097446,
+               0, 252851064, 0, 17011875, 0, 727037447, 0,
+               650387348, 0, 933192275, 0, 846397809, 0, 704259197,
+               0, 507877182, 0, 266262695, 0, 743604256, 0,
+               424220755, 0, 652965131, 0, 401529189, 0, 855235039,
+               0, 91519906, 0, 357915263, 0, 22531916, 0,
+               103643682, 0, 383807928, 0, 921514666, 0, 367820502,
+               0, 54805969, 0, 350004055, 0, 349850312, 0,
+               660202619, 0, 250195326, 0, 452369343, 0, 440947893,
+               0, 194754035, 0, 92941080, 0, 880097635, 0,
+               929392575, 0, 200582756, 0, 560625302, 0, 50199909,
+               0, 918107267, 0, 556537270, 0, 5421625, 0,
+               966214173, 0, 754777838, 0, 864044929, 0, 130325986,
+               0, 242075604, 0, 728644499, 0, 523163438, 0,
+               660414559, 0, 100952531, 0, 626553725, 0, 11969310,
+               0, 604008578, 0, 342206272, 0, 230489647, 0,
+               149724633, 0, 219988881, 0, 473014231, 0, 244277253,
+               0, 899198213, 0, 865606776, 0, 149465954, 0,
+               279035949, 0, 309768844, 0, 2440676, 0, 772791533,
+               0, 975873287, 0, 628224 };
+        break;
+    }
+
+    cout << solve( coef, T, n ) << '\n';
+    return 0;
+}
