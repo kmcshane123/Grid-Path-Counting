@@ -139,7 +139,7 @@ class Cell
 
   public:
     // TWO CELLS ARE "EQUAL" IF THEY HAVE SAME  pathEnd  VALUES.
-    // USED WHEN DETECTING CYCLES.
+    // USED BY THE StateList MAP.
     bool operator < ( const Cell& r2 ) const
     {  return this->pathEnd < r2.pathEnd;  }
 };
