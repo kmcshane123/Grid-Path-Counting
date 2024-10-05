@@ -277,22 +277,23 @@ class  Grid
     }
 };
 
-vector<mint>  berlekampMassey( const vector<mint> &S )  {
+template< typename T >
+vector<T>  berlekampMassey( const vector<T> &S )  {
     size_t  n = S.size(),  L = 0,  m = 0;
-    vector<mint>  C( n ), B( n ), T;
+    vector<T>  C( n ), B( n ), R;
     C[0] = B[0] = 1;
-    mint  b = 1;
+    T  b = 1;
 
     for( size_t i=0 ; i<n ; ++i )  {
        ++m;
-       mint  d = S[i];
+       T  d = S[i];
        for( size_t j=1 ; j<=L ; ++j )   d += C[j]*S[i - j];
        if( d == 0 )    continue;
-       T = C;
-       mint  coef = d*b.inverse();
+       R = C;
+       T  coef = d / b;
        for( size_t j=m ; j<n ; ++j )    C[j] -= coef*B[j - m];
        if( 2*L > i )   continue;
-       L = i + 1 - L;  B = T;  b = d;  m = 0;
+       L = i + 1 - L;  B = R;  b = d;  m = 0;
     }
     C.resize( L + 1 );
     C.erase( C.begin() );
@@ -319,16 +320,16 @@ int  main()
     size_t  R, C;
     cin >> R >> C;
 
-    vector< Mint<MOD> >  tallys;
+    vector<mint>  tallys;
     for( size_t i=1 ; i<=R ; ++i )  {
-        Grid< Mint<MOD> >  G( i, C );
+        Grid<mint>  G( i, C );
         G.setEndpoints( 0, 0, 0, C - 1 );
         auto  ans = G.solve();
         tallys.push_back( ans );
     }
 
     // CALCULATE RECURSION COEFFICIENTS
-    auto  ans = berlekampMassey( tallys );
+    auto  ans = berlekampMassey<mint>( tallys );
 
     size_t  sz = ans.size();
 
