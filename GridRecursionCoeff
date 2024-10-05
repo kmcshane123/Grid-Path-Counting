@@ -279,21 +279,20 @@ class  Grid
 
 template< typename T >
 vector<T>  berlekampMassey( const vector<T> &S )  {
-    size_t  n = S.size(),  L = 0,  m = 0;
+    size_t  n = S.size(),  L = 0;
     vector<T>  C( n ), B( n ), R;
     C[0] = B[0] = 1;
     T  b = 1;
 
-    for( size_t i=0 ; i<n ; ++i )  {
-       ++m;
-       T  d = S[i];
-       for( size_t j=1 ; j<=L ; ++j )   d += C[j]*S[i - j];
-       if( d == 0 )    continue;
-       R = C;
-       T  coef = d / b;
-       for( size_t j=m ; j<n ; ++j )    C[j] -= coef*B[j - m];
-       if( 2*L > i )   continue;
-       L = i + 1 - L;  B = R;  b = d;  m = 0;
+    for( size_t i=0, m=1 ; i<n ; ++i, ++m )  {
+        T  d = S[i];
+        for( size_t j=1 ; j<=L ; ++j )   d += C[j]*S[i - j];
+        if( d == 0 )    continue;
+        R = C;
+        T  coef = d / b;
+        for( size_t j=m ; j<n ; ++j )    C[j] -= coef*B[j - m];
+        if( 2*L > i )   continue;
+        L = i + 1 - L;  B = move( R );  b = d;  m = 0;
     }
     C.resize( L + 1 );
     C.erase( C.begin() );
