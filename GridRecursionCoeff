@@ -277,27 +277,30 @@ class  Grid
     }
 };
 
-template< typename T >
-vector<T>  berlekampMassey( const vector<T> &S )  {
-    size_t  n = S.size(),  L = 0;
-    vector<T>  C( n ), B( n ), R;
-    C[0] = B[0] = 1;
-    T  b = 1;
-
-    for( size_t i=0, m=1 ; i<n ; ++i, ++m )  {
-        T  d = S[i];
-        for( size_t j=1 ; j<=L ; ++j )   d += C[j]*S[i - j];
-        if( d == 0 )    continue;
-        R = C;
-        T  coef = d / b;
-        for( size_t j=m ; j<n ; ++j )    C[j] -= coef*B[j - m];
-        if( 2*L > i )   continue;
-        L = i + 1 - L;  B = move( R );  b = d;  m = 0;
+template<class T>
+vector<T>  berlekampMassey( const vector<T> &A )  {
+    int  n = A.size();
+    vector<T>  c{-1},  c2{0};
+    T  r2   = 1;
+    int  i2 = -1;
+    for( int i=0 ; i<n ; ++i )  {
+        T  r( 0 );
+        int  d = c.size();
+        for( int j=0 ; j<d ; ++j )   r += c[j] * A[i-j];
+        if( r == T( 0 ) )   continue;
+        T  coef = T( -r ) / r2;
+        int  d2 = c2.size();
+        if( d-i >= d2-i2 )
+            for( int j=0 ; j<d2 ; ++j )   c[j+i-i2] += c2[j] * coef;
+        else  {
+            vector<T>  tmp( c );
+            c.resize( d2 + i - i2 );
+            for( int j=0 ; j<d2 ; ++j )   c[j+i-i2] += c2[j] * coef;
+            c2 = move( tmp );
+            i2 = i;  r2 = r;
+        }
     }
-    C.resize( L + 1 );
-    C.erase( C.begin() );
-    for( auto &x : C )   x = -x;
-    return  C;
+    return  { c.begin() + 1, c.end() };
 }
 
 // INPUT FORMAT:
